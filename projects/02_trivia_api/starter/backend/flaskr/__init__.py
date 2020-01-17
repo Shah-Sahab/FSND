@@ -1,10 +1,11 @@
 import os
 from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 import random
+import sys
 
-from models import setup_db, Question, Category
+from models import setup_db, Question, Category, db
 
 QUESTIONS_PER_PAGE = 10
 
@@ -16,20 +17,40 @@ def create_app(test_config=None):
   '''
   @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
   '''
+  CORS(app, resource={ r'/api/*': { 'origins': '*' } })
+  # CORS(app)
 
   '''
   @TODO: Use the after_request decorator to set Access-Control-Allow
   '''
+  @app.after_request
+  def after_request(response):
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, true')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+    return response
 
   '''
-  @TODO: 
   Create an endpoint to handle GET requests 
   for all available categories.
   '''
+  # @cross_origin(origins=['*'])
+  @app.route('/categories', methods=['GET'])
+  def get_all_categories():
+    selection =  Category.query.with_entities(Category.type).all()
+
+    if selection is None:
+      abort(404)
+    # categories = [category.format() for category in selection]
+    categories = [category.format() for category in selection]
+    response = jsonify({
+      'success': True,
+      'count': len(categories),
+      'categories': categories
+    })
+    return response
 
 
   '''
-  @TODO: 
   Create an endpoint to handle GET requests for questions, 
   including pagination (every 10 questions). 
   This endpoint should return a list of questions, 
@@ -41,6 +62,35 @@ def create_app(test_config=None):
   Clicking on the page numbers should update the questions. 
   '''
 
+  @app.route('/questions', methods=['GET'])
+  def get_questions():
+    page = request.args.get('page', 1, type=int)
+    selection = Question.query.all()
+    start = (page - 1) * QUESTIONS_PER_PAGE
+    end = start + QUESTIONS_PER_PAGE
+    formatted_questions = [question.format() for question in selection]
+    return jsonify({
+      'success': True,
+      'questions': formatted_questions[start:end],
+      'totalQuestions': len(formatted_questions[start:end]),
+      # 'categories': [{category.id: category.type} for category in Category.query.all()],
+      'categories': [category for category in Category.query.with_entities(Category.type).all()],
+      'currentCategory': ' '
+    })
+
+  # @cross_origin(origin='localhost')
+  @app.route('/questions', methods=['POST'])
+  def create_question():
+    question = request.data['question']
+    answer = request.data.get['answer']
+    difficulty = request.data.get['difficulty']
+    category = request.data.get['category']
+
+    print(f' Question: {question}, answer: {answer}, difficulty: {difficulty}, category: {category} ')
+
+    pass
+    
+
   '''
   @TODO: 
   Create an endpoint to DELETE question using a question ID. 
@@ -48,6 +98,20 @@ def create_app(test_config=None):
   TEST: When you click the trash icon next to a question, the question will be removed.
   This removal will persist in the database and when you refresh the page. 
   '''
+  @app.route('/delete/<question_id>', methods=['DELETE'])
+  def delete_question(question_id):
+    try:
+      question = Question.query.get(question_id)
+      if question is None:
+        abort(404)
+      db.session.delete(question)
+      db.session.commit()
+    except:
+      print(sys.exc_info())
+      db.session.rollback()
+    finally:
+      db.session.close()
+
 
   '''
   @TODO: 
