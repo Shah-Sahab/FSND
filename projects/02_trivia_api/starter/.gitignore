@@ -1,6 +1,7 @@
 .vscode
 __pycache__
 venv
+
 frontend/node_modules/ajv 
 frontend/node_modules/css-tree 
 frontend/node_modules/csso 
@@ -10,6 +11,7 @@ frontend/node_modules/micromatch
 frontend/node_modules/w3c-hr-time 
 frontend/node_modules/workbox-precaching
 frontend/node_modules/*
+
 
 # OS generated files #
 ######################
