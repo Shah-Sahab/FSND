@@ -26,7 +26,6 @@ class QuestionView extends Component {
       url: `http://localhost:5000/questions?page=${this.state.page}`, //TODO: update request URL
       type: "GET",
       success: (result) => {
-        console.log('RESULTS from questions', result);
         this.setState({
           questions: result.questions,
           totalQuestions: result.total_questions,
@@ -78,8 +77,6 @@ class QuestionView extends Component {
   }
 
   submitSearch = (searchTerm) => {
-    console.log('Alright Alright Alright!!! I am here!!!');
-    console.log('Search Term', searchTerm);
     $.ajax({
       url: `http://localhost:5000/questions`, //TODO: update request URL
       type: "POST",
@@ -91,7 +88,6 @@ class QuestionView extends Component {
       },
       crossDomain: true,
       success: (result) => {
-        console.log('Result', result);
         this.setState({
           questions: result.questions,
           totalQuestions: result.total_questions,

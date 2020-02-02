@@ -15,13 +15,13 @@ def create_app(test_config=None):
   setup_db(app)
   
   '''
-  @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
+  Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
   '''
   # CORS(app, resource={ r'/api/*': { 'origins': '*' } })
   CORS(app)
 
   '''
-  @TODO: Use the after_request decorator to set Access-Control-Allow
+  Use the after_request decorator to set Access-Control-Allow
   '''
   @app.after_request
   def after_request(response):
@@ -112,11 +112,10 @@ def create_app(test_config=None):
     # and see if the search already exist. If not add the question 
     # to the Questions Model in DB.
     search_term = request.json.get('searchTerm')
-    # print(f'Search Term: {search_term}')
     if search_term:
-      print(f'My Search Term => {search_term}')
       questions = Question.query.filter(Question.question.ilike('%' + search_term + '%')).all()
       return jsonify({
+        'success': True,
         'questions': [question.format() for question in questions],
         'totalQuestions': len(questions),
         'currentCategory': ''
@@ -141,6 +140,7 @@ def create_app(test_config=None):
 
     # Jsonify the response
     return jsonify({
+      'success': True,
       'question': new_question.format()
     })
     
@@ -153,11 +153,15 @@ def create_app(test_config=None):
   """
   @app.route('/delete/<question_id>', methods=['DELETE'])
   def delete_question(question_id):
+    question = Question.query.get(question_id)
+    # If the result not found, abort 404 Not Found
+    if question is None:
+      abort(404)
+    # Otherwise try deleting the question.  
     try:
-      question = Question.query.get(question_id)
-      if question is None:
-        abort(404)
+      # We can do it this way as well.
       # db.session.delete(question)
+      # But for now we are going with this one.
       question.delete()
       db.session.commit()
     except:
@@ -165,8 +169,11 @@ def create_app(test_config=None):
       db.session.rollback()
     finally:
       db.session.close()
+    return jsonify({
+      'success': True,
+      'id': question_id
+    })
 
-  
 
   """
   Create a GET endpoint to get questions based on category. 
@@ -178,18 +185,21 @@ def create_app(test_config=None):
   @app.route('/categories/<int:category_id>/questions')
   def get_question_by_category(category_id):
     """ 
-    For some reason instead of sending an ID from frontend we receive an index. 
-    index starts at 0 while the id starts at 1. adding +1 to any index creates the actual category.
+    We are adding a +1 because we are receiving an index from the front end here instead of an id.
+    Index starts at 0 and catergory starts at 1. Therefore 0+1 and so on.
     """
     actual_category_id = category_id + 1
     selection = Question.query.filter(Question.category == actual_category_id).all()
+    # Logging out the Query Results.
     print(f'questions => {selection}')
+    # If selection is empty abort with 404.
     if not (selection):
       abort(404)
-
+    # Get all the filtered question formatted.
     filtered_questions = [question.format() for question in selection]
     category = Category.query.get(actual_category_id)  
     return jsonify({
+      'success': True,
       'questions': filtered_questions,
       'totalQuestions': Question.query.count(),
       'currentCategory': category.type
@@ -197,7 +207,6 @@ def create_app(test_config=None):
 
 
   """
-  @TODO: 
   Create a POST endpoint to get questions to play the quiz. 
   This endpoint should take category and previous question parameters 
   and return a random questions within the given category, 
@@ -210,32 +219,33 @@ def create_app(test_config=None):
 
   @app.route('/quizzes', methods=['POST'])
   def quizzes():
-    previous_questions = request.json.get('previous_questions')
-    quiz_category = request.json.get('quiz_category')
-    print(f'questions => {previous_questions}, quiz_category=> {quiz_category}')
+    selected_previous_questions = request.json.get('previous_questions')
+    selected_category = request.json.get('quiz_category')
+    print(f'questions => {selected_previous_questions}, selected_category=> {selected_category}')
     # Selection changes based on what category has been selected.
     selection = None
     # Get everything if All is selected in UI
-    if quiz_category.get('id') == 0:
+    if selected_category and selected_category.get('id') == 0:
       selection = Question.query.all()  
     else: # else just pick the questions from the given category.
-      selection = Question.query.filter(Question.category == quiz_category.get('id')).all()
+      selection = Question.query.filter(Question.category == selected_category.get('id')).all()
     questions = [sq.format() for sq in selection]
     rand = generate_random(len(questions))
     random_selected_question = questions[rand]
     print(f'Random Selected Question => {random_selected_question}')
-    while previous_questions and random_selected_question in previous_questions:
+    while selected_previous_questions and random_selected_question in selected_previous_questions:
       rand = generate_random(len(questions))
       # If questions[rand] matches the above criteria,
       # break loop, return the randomly selected question.
-      if questions[rand] not in previous_questions:
+      if questions[rand] not in selected_previous_questions:
         random_selected_question = questions[rand]
         break
       else:
         continue
       
     return jsonify({
-      'previousQuestions': previous_questions,
+      'success': True,
+      'previousQuestions': selected_previous_questions,
       'question': random_selected_question
     })
     
@@ -259,7 +269,7 @@ def create_app(test_config=None):
   def unprocessable_entity(error):
     return jsonify({
       'success': False,
-      'error': 404,
+      'error': 422,
       'message': 'Unprocessable Entity'
     }), 422
   
